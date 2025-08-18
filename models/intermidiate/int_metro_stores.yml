@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: int_metro_stores
+    description: >
+      This model enriches Metro store data by integrating discount banner information to classify each store into a sales channel.
+      It sources data from the `stg_metro_stores` staging model and the raw discount banners from `pos.raw_discount_banners`.
+      The model assigns a channel value of 'Discount' if the store's banner matches any discount banner, and 'Conventional' otherwise.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Metro   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.stg.metro_stores
+    columns:
+      - name: store_name
+        description: "The name of the Metro store."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Unique identifier for each Metro store."
+        tests:
+          - not_null
+      - name: banner
+        description: "The banner or brand information for the store."
+        tests:
+          - not_null
+      - name: province
+        description: "The province where the store is located."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "The retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: "A composite unique identifier created by concatenating retail_group and store_id."
+        tests:
+          - not_null
+          - unique
+      - name: channel
+        description: >
+          Sales channel classification derived from the store's banner.
+          If the banner is found in the discount banners list, the channel is set to 'Discount';
+          otherwise, it is set to 'Conventional'.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Discount', 'Conventional']

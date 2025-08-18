@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: stg_metro_sales
+    description: >
+      This model extracts and transforms raw Metro sales data from the POS system.
+      It sources data from the `pos.raw_metro_sales` table, renames columns for clarity,
+      casts numeric fields appropriately, parses the week end date, and creates a composite
+      unique identifier for each store to ensure data integrity for downstream analysis.
+    config:
+      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Metro   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.metro_sales
+    columns:
+      - name: store_id
+        description: "Unique store identifier derived from the `Store No` column."
+        tests:
+          - not_null
+      - name: product
+        description: "Product identifier or description as provided in the raw data."
+        tests:
+          - not_null
+      - name: upc_no
+        description: "Original UPC identifier from the raw data."
+        tests:
+          - not_null
+      - name: upc_int
+        description: "UPC identifier cast as an integer to support numerical operations."
+        tests:
+          - not_null
+      - name: dollar_sales
+        description: "Sales amount in dollars, cast to float64 for accurate financial calculations."
+        tests:
+          - not_null
+      - name: unit_sales
+        description: "Number of units sold, cast to int64 for consistent numeric analysis."
+        tests:
+          - not_null
+      - name: week_end_date
+        description: "Date representing the end of the sales week, parsed from the raw `Week End Date` field."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Retail group identifier associated with the sales record."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          Composite a store unique identifier created by concatenating `retail_group` and `Store No`
+          (i.e., store_id) with a pipe (`|`) separator. This field ensures each store record is uniquely identifiable.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_metro_stores')
+              field: unique_store_id
+      - name: pod
+        description: >
+          A composite created by concatenating `retail_group`, the original
+          `Store No` value and `UPC ID`. This field is used to calculate the point of distribution KPI.

@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: sales
+    description: >
+      This model consolidates sales data from multiple retail accounts into a single, unified dataset.
+      It appends data from the following source models:
+        - int_lcl_sales
+        - int_fcl_sales
+        - stg_sobeys_sales
+        - stg_ccl_sales
+        - stg_pfg_sales
+        - stg_metro_sales
+      The unioned dataset provides a consistent schema with common fields such as store_id, product,
+      upc_no, upc_int, dollar_sales, unit_sales, week_end_date, retail_group, unique_store_id, and pod.
+    config:
+      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: table  # Model type (table or view)
+      data_source: POS Sales from multiple retail groups   # Model package
+      language: sql  # Language used to define the model
+    columns:
+      - name: store_id
+        description: "Unique store identifier for each record."
+        tests:
+          - not_null
+      - name: product
+        description: "Description or identifier of the product sold."
+        tests:
+          - not_null
+      - name: upc_no
+        description: "Original UPC number as provided in the source data."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('product')
+              field: upc
+      - name: upc_int
+        description: "UPC number cast as an integer to support numerical operations."
+        tests:
+          - not_null
+      - name: dollar_sales
+        description: "Sales amount in dollars, represented as a float."
+        tests:
+          - not_null
+      - name: unit_sales
+        description: "Number of units sold, represented as an integer."
+        tests:
+          - not_null
+      - name: week_end_date
+        description: "The end date of the sales week, formatted as a DATE."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Classification of the sales record by retail group."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: "Composite unique identifier created by concatenating retail_group and store_id with a pipe (`|`) separator."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stores')
+              field: unique_store_id
+      - name: pod
+        description: "Extended unique identifier combining retail_group, store_id, and UPC (upc_no) using a pipe (`|`) separator."
+        tests:
+          - not_null

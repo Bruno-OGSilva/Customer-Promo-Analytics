@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: stg_lcl_stores
+    description: >
+      This model extracts and transforms raw store data for LCL from the POS system.
+      It sources data from the `pos.raw_lcl_stores` table, renames key columns for clarity,
+      and derives a composite unique identifier to ensure reliable joins and aggregations in downstream models.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Loblaw   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.lcl_stores
+    columns:
+      - name: store_name
+        description: "Store name derived from the `Store Name` column in the raw data."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Unique identifier for each store derived from the `Store No` column."
+        tests:
+          - not_null
+      - name: division
+        description: "Operational division of the store, sourced from the `Division` column."
+        tests:
+          - not_null
+      - name: banner
+        description: "The store banner, extracted from `Store Banner`, with standardization applied."
+        tests:
+          - not_null
+      - name: province
+        description: "Province information for the store, derived from the `Prv` column."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          Composite unique identifier created by concatenating `retail_group` and `Store No`
+          with a pipe (`|`) separator. This field ensures that each store record is uniquely identified.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_lcl_sales')
+              field: unique_store_id

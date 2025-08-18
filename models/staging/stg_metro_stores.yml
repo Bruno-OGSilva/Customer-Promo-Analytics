@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: stg_metro_stores
+    description: >
+      This model extracts and transforms raw store data for Metro from the POS system.
+      It sources data from the `pos.raw_metro_stores` table, renames columns for clarity,
+      and generates a composite unique identifier to ensure data integrity for downstream analysis.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Metro   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.metro_stores
+    columns:
+      - name: store_name
+        description: "Name of the store derived from `Store Name`."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Unique store identifier derived from `Operational Site`."
+        tests:
+          - not_null
+      - name: banner
+        description: "Store banner or brand information derived from `Banner Description`."
+        tests:
+          - not_null
+      - name: province
+        description: "Province where the store is located, sourced from the `Province` column."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Retail group affiliation of the store."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          Composite unique identifier created by concatenating `retail_group` and `Operational Site`
+          (i.e. `store_id`) using a pipe (`|`) as the separator. This field ensures that each store record is uniquely identifiable.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_metro_sales')
+              field: unique_store_id

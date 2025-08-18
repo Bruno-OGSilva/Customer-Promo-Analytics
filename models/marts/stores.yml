@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: stores
+    description: >
+      This model consolidates store data from multiple retail accounts into a single, unified dataset.
+      It unions data from the following intermediate models:
+        - int_lcl_stores
+        - int_fcl_stores
+        - int_sobeys_stores
+        - int_ccl_stores
+        - int_pfg_stores
+        - int_metro_stores
+      The resulting dataset provides a consistent view of store information for comprehensive reporting and analysis.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: table  # Model type (table or view)
+      data_source: POS Stores from multiple retail groups   # Model package
+      language: sql  # Language used to define the model
+    columns:
+      - name: store_name
+        description: "The name of the store."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Unique identifier for each store."
+        tests:
+          - not_null
+      - name: banner
+        description: "The store's banner or brand."
+        tests:
+          - not_null
+      - name: province
+        description: "The province where the store is located."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "The retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating the retail_group and store_id.
+          This ensures that each store record is uniquely identifiable.
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              to: ref('sales')
+              field: unique_store_id
+      - name: channel
+        description: >
+          Sales channel classification for the store. It is derived based on the store's banner.
+          Expected values are 'Discount' or 'Conventional'.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["Discount", "Conventional"]

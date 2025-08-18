@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: stg_fcl_sales
+    description: >
+      This model extracts and transforms raw FCL sales data from the POS system.
+      It sources data from the `pos.raw_fcl_sales` table, renames columns for clarity,
+      casts data types to ensure consistency, and creates a composite unique identifier.
+      These transformations prepare the data for accurate and efficient downstream analysis.
+    config:
+      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Federated Coop   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw_fcl_sales
+    columns:
+      - name: store_id
+        description: "Unique store identifier derived from `Store Number`."
+        tests:
+          - not_null
+      - name: product
+        description: "Product description derived from `Product Name`."
+        tests:
+          - not_null
+      - name: upc_no
+        description: "Original UPC value as provided in the source data."
+        tests:
+          - not_null
+      - name: upc_int
+        description: "UPC value cast as an integer to facilitate numerical operations."
+        tests:
+          - not_null
+      - name: dollar_sales
+        description: "Dollar sales value cast as float64 to support precise financial calculations."
+        tests:
+          - not_null
+      - name: unit_sales
+        description: "Number of units sold, cast as int64 for consistent numerical analysis."
+        tests:
+          - not_null
+      - name: week_end_date
+        description: "Date representing the end of the sales week, cast to DATE."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Retail group associated with the sales record."
+        tests:
+          - not_null
+      - name: promo_type
+        description: "Promotion type information derived from `Promotion Type Name`."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          Composite unique identifier created by concatenating `retail_group` and `Store Number`
+          with a pipe (`|`) separator. This field ensures each store record is uniquely identifiable.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_fcl_stores')
+              field: unique_store_id
+      - name: pod
+        description: >
+          A composite created by concatenating `retail_group`, the original
+          `Store Number` value and `UPC`. This field is used to calculate the point of distribution KPI.

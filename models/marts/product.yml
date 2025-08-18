@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: product
+    description: >
+      This model delivers a unified view of product information for reporting and analysis.
+      It pulls data from the `stg_product` staging model, ensuring that the product data is
+      standardized, clean, and ready for downstream consumption.
+    columns:
+      - name: product
+        description: "The name or identifier of the product."
+        tests:
+          - not_null
+      - name: upc
+        description: "The original UPC value as provided in the raw data. This is the unique id for this model"
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              to: ref('sales')
+              field: upc_no
+      - name: upc_int
+        description: "UPC value cast as an integer for numerical operations."
+        tests:
+          - not_null
+      - name: vendor
+        description: "The vendor or supplier of the product."
+      - name: brand
+        description: "The brand of the product."
+      - name: category
+        description: "The main category to which the product belongs."
+      - name: subcategory
+        description: "The subcategory for a more granular classification of the product."
+      - name: item_size
+        description: "The size of the product item."
+      - name: item_unit
+        description: "The unit of measurement for the product size."
+      - name: pack_qty
+        description: "The number of items per pack."

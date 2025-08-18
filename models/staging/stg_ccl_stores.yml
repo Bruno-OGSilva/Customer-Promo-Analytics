@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: stg_ccl_stores
+    description: >
+      This model extracts and transforms raw store data for CCL from the POS system.
+      It sources data from the `pos.raw_ccl_stores` table, renames columns for clarity,
+      sets a hardcoded province value ('AB'), and derives a unique store identifier by
+      concatenating `retail_group` and `Store Number`.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Calgary   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.ccl_stores
+    columns:
+      - name: store_name
+        description: "Derived from the Geography column; represents the store's name."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Extracted from 'Store Number'; a unique identifier for each store."
+        tests:
+          - not_null
+      - name: banner
+        description: "Derived from 'Division Name'; represents the store's banner."
+        tests:
+          - not_null
+      - name: province
+        description: "A hardcoded province value ('AB') to indicate the store's province."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Indicates the retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating `retail_group` and `Store Number`
+          with a pipe (`|`) separator. This field ensures each store is uniquely identified and
+          supports reliable joins in downstream models.
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              to: ref('stg_ccl_sales')
+              field: unique_store_id

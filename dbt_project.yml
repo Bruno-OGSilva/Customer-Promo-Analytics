@@ -17,10 +17,13 @@ test-paths: ["tests"]
 seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
+docs-paths: ["docs"]
 
 clean-targets:         # directories to be removed by `dbt clean`
   - "target"
   - "dbt_packages"
+
+
 
 
 # Configuring models
@@ -29,8 +32,29 @@ clean-targets:         # directories to be removed by `dbt clean`
 # In this example config, we tell dbt to build all models in the example/
 # directory as views. These settings can be overridden in the individual model
 # files using the `{{ config(...) }}` macro.
+
+seeds:
+  'customer_promo_grocery':
+    +schema: raw
+    raw_product_mf:
+      +column_types:
+        upc: STRING
+
+
 models:
   customer_promo_grocery:
     # Config indicated by + and applies to all files under models/example/
-    example:
+    raw:
       +materialized: view
+      +docs:
+        node_color: "#cd7f32"  # Bronze color for the raw layer
+    staging:
+      +materialized: view
+      +docs:
+        node_color: "#c0c0c0"  # Silver color for the staging layer
+    intermidiate:
+      +materialized: view
+    marts:
+      +materialized: table
+      +docs:
+        node_color: "#e6b530"  # Gold color for the mart layer

@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: stg_ccl_sales
+    description: >
+      This model extracts, cleans, and transforms raw CCL sales data from the POS system.
+      It pulls data from the source table `pos.raw_ccl_sales`, renames columns for clarity,
+      casts data types for consistency, and derives a unique store identifier to support
+      downstream analysis and reporting.
+    config:
+      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Calgary   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.ccl_sales
+    columns:
+      - name: store_id
+        description: >
+          Derived from the `Geography` column, this field serves as the store identifier.
+        tests:
+          - not_null
+      - name: product
+        description: >
+          The product sold as captured in the raw data.
+        tests:
+          - not_null
+      - name: upc_no
+        description: >
+          The original UPC identifier extracted from the raw data.
+        tests:
+          - not_null
+      - name: upc_int
+        description: >
+          UPC identifier cast to an integer to support numerical operations.
+        tests:
+          - not_null
+      - name: dollar_sales
+        description: >
+          The total dollar sales, cast as a float for precise financial calculations.
+        tests:
+          - not_null
+      - name: unit_sales
+        description: >
+          The number of units sold, cast as an integer.
+        tests:
+          - not_null
+      - name: week_end_date
+        description: >
+          The end date of the sales week, converted to a DATE type from the raw `Time` column.
+        tests:
+          - not_null
+      - name: retail_group
+        description: >
+          The retail group associated with the sales record.
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating `retail_group` and the original
+          `Geography` value. This field identifies the unique sotres and will be crutial when appending the tables from the different retail groups.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_ccl_stores')
+              field: unique_store_id
+      - name: pod
+        description: >
+          A composite created by concatenating `retail_group`, the original
+          `Geography` value and `UPC ID`. This field is used to calculate the point of distribution KPI.

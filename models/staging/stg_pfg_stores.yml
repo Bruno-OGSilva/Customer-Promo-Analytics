@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: stg_pfg_stores
+    description: >
+      This model extracts and transforms raw store data for PFG from the POS system.
+      It sources data from the `pos.raw_pfg_stores` table, renames columns for clarity,
+      standardizes province names into two-letter codes via a CASE statement, and creates
+      a composite unique identifier for each store.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Pattison Food Group   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.pfg_stores
+    columns:
+      - name: store_name
+        description: >
+          Derived from `Store Name`; represents the store's name.
+        tests:
+          - not_null
+      - name: store_id
+        description: >
+          Renamed from `Store Number`; serves as the unique identifier for each store.
+        tests:
+          - not_null
+      - name: banner
+        description: >
+          Renamed from `Banner Name`; represents the store's banner.
+        tests:
+          - not_null
+      - name: "Province Name"
+        description: >
+          The original province name from the source data.
+        tests:
+          - not_null
+      - name: province
+        description: >
+          Standardized province code derived from `Province Name` using a CASE statement.
+          For example, 'ALBERTA' is converted to 'AB', 'BRITISH COLUMBIA' to 'BC', etc.
+        tests:
+          - not_null
+      - name: retail_group
+        description: >
+          Indicates the retail group to which the store belongs.
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating `retail_group` and `Store Number`
+          (i.e., store_id) with a pipe (`|`) separator. This ensures that each store record is uniquely identified.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_pfg_sales')
+              field: unique_store_id

@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_product
+    description: >
+      This model extracts and transforms raw product data from the POS system.
+      It pulls data from the `pos.raw_product_mf` source, selects key product attributes,
+      and performs necessary type conversions, such as casting the UPC to an integer. This
+      ensures that the product data is standardized and ready for downstream processing.
+    columns:
+      - name: product
+        description: "The name or identifier of the product."
+        tests:
+          - not_null
+      - name: upc
+        description: "The original UPC value as provided in the raw data. This is the unique id in this model"
+        tests:
+          - not_null
+          - unique
+      - name: upc_int
+        description: "UPC value cast as an integer to support numerical operations."
+        tests:
+          - not_null
+      - name: vendor
+        description: "The vendor or supplier of the product."
+      - name: brand
+        description: "The brand of the product."
+      - name: category
+        description: "The main category to which the product belongs."
+      - name: subcategory
+        description: "The subcategory for a more granular classification of the product."
+      - name: item_size
+        description: "The size of the product item."
+      - name: item_unit
+        description: "The unit of measurement for the product size."
+      - name: pack_qty
+        description: "The quantity of items per pack."

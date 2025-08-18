@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: int_fcl_sales
+    description: >
+      This model refines raw FCL sales data from the staging layer (`stg_fcl_sales`) by excluding the `promo_type` column,
+      which is not common to other retail accounts. The resulting dataset includes only the common fields needed for
+      downstream aggregation in the Mart layer.
+    config:
+      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Federated Coop   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.stg_fcl_sales
+    columns:
+      - name: store_id
+        description: "Unique store identifier derived from the source `Store Number`."
+        tests:
+          - not_null
+      - name: product
+        description: "Product description derived from `Product Name` in the staging data."
+        tests:
+          - not_null
+      - name: upc_no
+        description: "Original UPC number as provided in the staging layer."
+        tests:
+          - not_null
+      - name: upc_int
+        description: "UPC number cast as an integer to support numerical operations."
+        tests:
+          - not_null
+      - name: dollar_sales
+        description: "Sales amount in dollars, cleaned and cast as float64 for precise financial calculations."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "dollar_sales >= 0"
+      - name: unit_sales
+        description: "Number of units sold, cast as int64 for consistent numerical analysis."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "unit_sales >= 0"
+      - name: week_end_date
+        description: "The end date of the sales week, cast to a DATE for time-series analysis."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Retail group classification as provided in the staging data."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          Composite unique identifier created by concatenating `retail_group` and `store_id` with a pipe (`|`)
+          separator. This field ensures each record is uniquely identifiable.
+        tests:
+          - not_null
+      - name: pod
+        description: >
+          Extended unique identifier created by concatenating `retail_group`, `store_id`, and `upc_no` with pipe (`|`)
+          separators. This field provides a more granular level of record identification.
+        tests:
+          - not_null

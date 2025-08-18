@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: int_lcl_sales
+    description: >
+      This model refines raw LCL sales data from the POS system by applying necessary transformations,
+      renaming columns, casting data types, and generating unique identifiers. It deliberately excludes
+      the promotional sales columns (`promo_dollar_sales` and `promo_unit_sales`) to maintain a consistent
+      schema for later appending with other retail accounts in the Mart layer.
+    config:
+      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Loblaw   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.stg_lcl_sales
+    columns:
+      - name: store_id
+        description: "Store identifier derived from the `Site Number` column."
+        tests:
+          - not_null
+      - name: product
+        description: "Product description derived from `UPC_Description`."
+        tests:
+          - not_null
+      - name: upc_no
+        description: "Original UPC value as provided in the raw data."
+        tests:
+          - not_null
+      - name: upc_int
+        description: "UPC value cast as an integer to support numerical operations."
+        tests:
+          - not_null
+      - name: dollar_sales
+        description: "Cleaned sales amount in dollars, cast as float64 after removing currency symbols and commas."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "dollar_sales >= 0"
+      - name: unit_sales
+        description: "Number of units sold, cast as int64."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "unit_sales >= 0"
+      - name: week_end_date
+        description: "Sales week end date, cast to DATE format."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Retail group associated with the sales record."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          Composite unique identifier created by concatenating `retail_group` and `Site Number` with a pipe (`|`)
+          separator. This field ensures each store record is uniquely identifiable.
+        tests:
+          - not_null
+      - name: pod
+        description: >
+          Extended unique identifier created by concatenating `retail_group`, `Site Number`, and `UPC` with pipe (`|`)
+          separators. This field can be used for detailed record identification.
+        tests:
+          - not_null

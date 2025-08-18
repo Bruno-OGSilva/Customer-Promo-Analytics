@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: int_pfg_stores
+    description: >
+      This model enriches PFG store data by integrating discount banner information to classify each store into a sales channel.
+      It sources data from the `stg_pfg_stores` staging model and the raw discount banners from `pos.raw_discount_banners`.
+      The model assigns a channel value of 'Discount' if the store's banner matches any discount banner, and 'Conventional' otherwise.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Pattison Food Group   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.stg.pfg_stores
+    columns:
+      - name: store_name
+        description: "The name of the PFG store."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Unique identifier for each PFG store."
+        tests:
+          - not_null
+      - name: banner
+        description: "The store's banner or brand information."
+        tests:
+          - not_null
+      - name: province
+        description: "The province where the store is located."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "The retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating `retail_group` and `store_id` with a separator.
+          This field ensures that each store record is uniquely identifiable.
+        tests:
+          - not_null
+          - unique
+      - name: channel
+        description: >
+          Sales channel classification derived from the store's banner.
+          If the banner is found in the discount banners list, the channel is 'Discount'; otherwise, it is 'Conventional'.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Discount', 'Conventional']

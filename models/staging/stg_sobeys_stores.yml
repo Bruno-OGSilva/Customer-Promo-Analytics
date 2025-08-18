@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: stg_sobeys_stores
+    description: >
+      This model extracts and transforms the raw store data for Sobeys from the POS system.
+      It pulls data from the source table `pos.raw_sobeys_stores`, renames columns for clarity,
+      and derives a composite unique identifier by concatenating `retail_group` and `Store No`.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Sobeys   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.sobeys_stores
+    columns:
+      - name: store_name
+        description: "Derived from 'Geography'; represents the store's name or location."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Extracted from 'Store No'; a unique identifier for each store."
+        tests:
+          - not_null
+      - name: division
+        description: "Extracted from 'Division Name'; indicates the operational division of the store."
+        tests:
+          - not_null
+      - name: format
+        description: "Extracted from 'Format Name'; denotes the store's format."
+        tests:
+          - not_null
+      - name: banner
+        description: "Extracted from 'Banners Name'; represents the store's banner or brand."
+        tests:
+          - not_null
+      - name: province
+        description: "Extracted from 'Province Name'; indicates the province where the store is located."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Indicates the retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating `retail_group` and `store_id`.
+          This field is essential for accurate joins and aggregations in downstream models.
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              to: ref('stg_sobeys_sales')
+              field: unique_store_id

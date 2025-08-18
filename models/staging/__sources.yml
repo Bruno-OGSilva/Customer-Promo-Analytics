@@ -1,0 +1,40 @@
+version: 2
+
+sources:
+  - name: pos
+    schema: raw
+    description: POS data extracted from the retail gateways (LDIA, Circana, 1 Screen and Dunnhumby)
+    freshness:
+      warn_after:
+        count: 24
+        period: hour
+      error_after:
+        count: 48
+        period: hour
+    tables:
+      - name: raw_sobeys_sales
+        description: Sobeys dollar and unit sales by week-store-upc
+      - name: raw_sobeys_stores
+        description: Sobeys sstore dimension table
+      - name: raw_ccl_sales
+        description: Calgary Coop dollar and unit sales by week-store-upc
+      - name: raw_ccl_stores
+        description: Calgary sstore dimension table
+      - name: raw_pfg_sales
+        description: Pattison Food Group dollar and unit sales by week-store-upc
+      - name: raw_pfg_stores
+        description: Pattison Food Group store dimension table
+      - name: raw_lcl_sales
+        description: Loblaw dollar and unit sales by week-store-upc
+      - name: raw_lcl_stores
+        description: Loblaw store dimension table
+      - name: raw_metro_sales
+        description: Metro dollar and unit sales by week-store-upc
+      - name: raw_metro_stores
+        description: Metro store dimension table
+      - name: raw_fcl_sales
+        description: Federated Coop dollar and unit sales by week-store-up-promotype
+      - name: raw_discount_banners
+        description: Contains the dicount banners
+      - name: raw_product_mf
+        description: Product master file

@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: int_sobeys_stores
+    description: >
+      This model enriches Sobeys store data by integrating discount banner information
+      to classify each store into a sales channel. It sources data from the `stg_sobeys_stores` model
+      and uses discount banner data from `pos.raw_discount_banners` to determine if a store is 'Discount'
+      or 'Conventional'. This segmentation supports targeted downstream reporting and analysis.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Sobeys   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.stg.sobeys_stores
+    columns:
+      - name: store_name
+        description: "The name of the Sobeys store."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Unique identifier for each store."
+        tests:
+          - not_null
+      - name: banner
+        description: "The banner or brand information for the store."
+        tests:
+          - not_null
+      - name: province
+        description: "The province where the store is located."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "The retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating `retail_group` and `store_id`,
+          ensuring each store record is uniquely identifiable.
+        tests:
+          - not_null
+          - unique
+      - name: channel
+        description: >
+          Sales channel classification derived from the store's banner.
+          Stores with banners matching any discount banner are classified as 'Discount';
+          otherwise, they are classified as 'Conventional'.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Discount', 'Conventional']

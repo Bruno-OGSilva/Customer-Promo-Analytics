@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: product_missing
+    description: >
+      This model identifies new product items that have sales in the sales table but do not have a matching UPC in the product table.
+      It serves as a diagnostic tool to alert data stewards that manual updates are needed for the product dimension.
+    columns:
+      - name: product
+        description: "Product name from the sales data."
+        tests:
+          - not_null
+      - name: upc_no
+        description: "UPC number from the sales data."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Retail group classification from the sales data."
+        tests:
+          - not_null
+      - name: brand
+        description: "Brand from the product data; expected to be NULL indicating the product is missing from the product table."

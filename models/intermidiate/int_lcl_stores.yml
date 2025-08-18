@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: int_lcl_stores
+    description: >
+      This model enriches local (LCL) store data by integrating discount banner information.
+      It classifies each store into a sales channel based on whether its banner matches any discount banner
+      from the raw source. The model relies on data from the `stg_lcl_stores` staging model and the
+      `pos.raw_discount_banners` source to derive the final classification.
+    config:
+      tags: ['dStores'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Loblaw   # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.stg.lcl_stores
+    columns:
+      - name: store_name
+        description: "The name of the local store."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Unique identifier for each store."
+        tests:
+          - not_null
+      - name: banner
+        description: "The store's banner or brand information."
+        tests:
+          - not_null
+      - name: province
+        description: "The province where the store is located."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "The retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier created by concatenating the retail_group and store_id.
+          This field ensures each store record is uniquely identifiable.
+        tests:
+          - not_null
+          - unique
+      - name: channel
+        description: >
+          Sales channel classification derived from the store's banner.
+          If the banner exists in the discount banners list, the channel is 'Discount';
+          otherwise, it is 'Conventional'.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Discount', 'Conventional']

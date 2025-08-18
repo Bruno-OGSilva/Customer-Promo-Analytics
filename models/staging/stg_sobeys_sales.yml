@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: stg_sobeys_sales
+    description: >
+      This model extracts and transforms the raw POS data for Sobeys from CSV files. It
+      renames columns, casts data types for consistency, and derives new fields such as
+      unique_store_id for downstream analysis in BigQuery using dbt.
+    config:
+      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+    meta:  # Additional metadata
+      owner: Bruno Silva  # Model owner
+      type: view  # Model type (table or view)
+      data_source: POS Sobeys  # Model package
+      language: sql  # Language used to define the model
+      relation: bigquery.raw.sobeys_sales
+    columns:
+      - name: store_id
+        description: "Unique identifier for the store as provided in the source data."
+        tests:
+          - not_null
+      - name: product
+        description: "Description of the product sold."
+        tests:
+          - not_null
+      - name: upc_no
+        description: "Original UPC number as provided in the raw data."
+        tests:
+          - not_null
+      - name: upc_int
+        description: "UPC number cast as an integer."
+        tests:
+          - not_null
+      - name: dollar_sales
+        description: "Dollar value of all sales, cast to float for precision in financial calculations."
+        tests:
+          - not_null
+      - name: unit_sales
+        description: "The total number of units sold, cast to an integer."
+        tests:
+          - not_null
+      - name: week_end_date
+        description: "The date marking the end of the sales week, converted from the raw Time column."
+        tests:
+          - not_null
+      - name: retail_group
+        description: "Identifier for the retail group to which the store belongs."
+        tests:
+          - not_null
+      - name: unique_store_id
+        description: >
+          A composite unique identifier for each store, created by concatenating retail_group
+          and store_id. This field simplifies joins and aggregations in downstream models.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_sobeys_stores')
+              field: unique_store_id
+      - name: pod
+        description: >
+          A composite created by concatenating `retail_group`, the original
+          `Geography` value and `UPC No`. This field is used to calculate the point of distribution KPI.
