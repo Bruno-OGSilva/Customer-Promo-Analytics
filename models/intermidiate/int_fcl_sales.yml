@@ -7,7 +7,7 @@ models:
       which is not common to other retail accounts. The resulting dataset includes only the common fields needed for
       downstream aggregation in the Mart layer.
     config:
-      tags: ['fSales'] # Using the tag to differenciate the fact from the dimension tables
+      tags: ['fSales'] # Using the tag to differentiate the fact from the dimension tables
     meta:  # Additional metadata
       owner: Bruno Silva  # Model owner
       type: view  # Model type (table or view)
@@ -35,14 +35,16 @@ models:
         description: "Sales amount in dollars, cleaned and cast as float64 for precise financial calculations."
         tests:
           - not_null
-          - expression_is_true:
-              expression: "dollar_sales >= 0"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "dollar_sales >= 0"
       - name: unit_sales
         description: "Number of units sold, cast as int64 for consistent numerical analysis."
         tests:
           - not_null
-          - expression_is_true:
-              expression: "unit_sales >= 0"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "unit_sales >= 0"
       - name: week_end_date
         description: "The end date of the sales week, cast to a DATE for time-series analysis."
         tests:
