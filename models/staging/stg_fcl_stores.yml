@@ -44,5 +44,6 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_fcl_sales')
-              field: unique_store_id
+              arguments:
+                to: ref('stg_fcl_sales')
+                field: unique_store_id

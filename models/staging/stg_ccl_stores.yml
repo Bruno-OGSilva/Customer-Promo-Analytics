@@ -45,5 +45,6 @@ models:
           - not_null
           - unique
           - relationships:
-              to: ref('stg_ccl_sales')
-              field: unique_store_id
+              arguments:
+                to: ref('stg_ccl_sales')
+                field: unique_store_id

@@ -48,8 +48,9 @@ models:
           - not_null
           - unique
           - relationships:
-              to: ref('sales')
-              field: unique_store_id
+              arguments:
+                to: ref('sales')
+                field: unique_store_id
       - name: channel
         description: >
           Sales channel classification for the store. It is derived based on the store's banner.
@@ -57,4 +58,5 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ["Discount", "Conventional"]
+              arguments:
+                values: ["Discount", "Conventional"]

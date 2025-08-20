@@ -63,8 +63,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_ccl_stores')
-              field: unique_store_id
+              arguments:
+                to: ref('stg_ccl_stores')
+                field: unique_store_id
       - name: pod
         description: >
           A composite created by concatenating `retail_group`, the original

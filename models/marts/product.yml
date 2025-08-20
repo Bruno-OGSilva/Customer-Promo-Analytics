@@ -17,8 +17,9 @@ models:
           - not_null
           - unique
           - relationships:
-              to: ref('sales')
-              field: upc_no
+              arguments:
+                to: ref('sales')
+                field: upc_no
       - name: upc_int
         description: "UPC value cast as an integer for numerical operations."
         tests:

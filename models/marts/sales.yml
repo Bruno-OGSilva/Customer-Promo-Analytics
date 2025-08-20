@@ -34,8 +34,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('product')
-              field: upc
+              arguments:
+                to: ref('product')
+                field: upc
       - name: upc_int
         description: "UPC number cast as an integer to support numerical operations."
         tests:
@@ -61,8 +62,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stores')
-              field: unique_store_id
+              arguments:
+                to: ref('stores')
+                field: unique_store_id
       - name: pod
         description: "Extended unique identifier combining retail_group, store_id, and UPC (upc_no) using a pipe (`|`) separator."
         tests:

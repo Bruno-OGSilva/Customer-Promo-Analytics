@@ -49,4 +49,5 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['Discount', 'Conventional']
+              arguments:
+                values: ['Discount', 'Conventional']
