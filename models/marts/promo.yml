@@ -1,0 +1,72 @@
+version: 2
+
+models:
+  - name: promo
+    description: >
+      Unified promo mart table across retailers (CCL, FCL, LCL, Metro, PFG, Sobeys).
+      Each row represents banner + UPC + week, with weighted average price, a 14-week
+      max reference, % off, promo bucket, and a boolean promo flag.
+    config:
+      tags: ['promo','mart']
+
+    columns:
+      - name: retail_group
+        description: "Retail group (e.g., Sobeys, LCL, Metro, PFG, CCL, FCL)."
+        tests:
+          - not_null
+
+      - name: banner
+        description: "Retailer banner used for promo grouping."
+        tests:
+          - not_null
+
+      - name: upc_no
+        description: "UPC of the item."
+        tests:
+          - not_null
+
+      - name: product
+        description: "Product description for the UPC."
+
+      - name: week_end_date
+        description: "Business week end date."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('calendar')
+                field: week_end_date
+
+      - name: week_index
+        description: "Sequential business week index from the calendar table."
+        tests:
+          - not_null
+
+      - name: dollar_sales
+        description: "Sum of dollar sales for banner+UPC+week (rounded to 2 dp)."
+        tests:
+          - not_null
+
+      - name: unit_sales
+        description: "Sum of unit sales for banner+UPC+week."
+        tests:
+          - not_null
+
+      - name: avg_price
+        description: "Weighted average price (2 dp)."
+
+      - name: max_price_14w
+        description: "Rolling 14-week max avg_price for the same banner+UPC (2 dp)."
+
+      - name: pct_off
+        description: "Percent off vs rolling max (4 dp). Null if reference price is null/zero."
+
+      - name: pct_off_bucket
+        description: "Promo depth bucket."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Regular','5-10%','10-20%','20%+']
+
+      - name: is_promo_week
+        description: "True if avg_price <= 95% of the 14-week max; else false."
