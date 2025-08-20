@@ -1,0 +1,111 @@
+{{ config(
+  materialized   = 'incremental',
+  unique_key     = ['banner','upc_no','week_index'],
+  partition_by   = {'field': 'week_end_date', 'data_type': 'date'},
+  cluster_by     = ['banner','upc_no'],
+  on_schema_change = 'sync_all_columns'
+) }}
+
+with sales as (
+  select
+    a.upc_no,
+    a.product,
+    a.week_end_date,
+    a.dollar_sales,
+    a.unit_sales,
+    a.unique_store_id
+  from {{ ref('stg_lcl_sales') }} a
+  {% if is_incremental() %}
+    where a.week_end_date >= (
+      -- reprocess the last ~16 weeks from source (no {{ this }} to avoid parser issues)
+      select date_sub(max(week_end_date), interval 16 week)
+      from {{ ref('stg_lcl_sales') }}
+    )
+  {% endif %}
+),
+stores as (
+  select
+    b.unique_store_id,
+    b.banner,
+    b.retail_group
+  from {{ ref('int_lcl_stores') }} b
+),
+cal as (
+  select
+    c.week_end_date,
+    c.week_index
+  from {{ ref('calendar') }} c
+),
+agg as (
+  select
+    t.banner,
+    t.retail_group,
+    s.upc_no,
+    any_value(s.product) as product,
+    s.week_end_date,
+    u.week_index,
+    round(sum(s.dollar_sales), 2) as dollar_sales,           -- 2 dp
+    sum(s.unit_sales)              as unit_sales,             -- integer sum
+    round(
+      safe_divide(sum(s.dollar_sales), nullif(sum(s.unit_sales), 0)),
+      2
+    ) as avg_price                                                    -- 2 dp
+  from sales s
+  join stores t on s.unique_store_id = t.unique_store_id
+  join cal    u on s.week_end_date   = u.week_end_date
+  group by 1,2,3,5,6
+),
+ref as (
+  select
+    banner,
+    retail_group,
+    upc_no,
+    product,
+    week_end_date,
+    week_index,
+    dollar_sales,
+    unit_sales,
+    avg_price,
+    round(
+      max(avg_price) over (
+        partition by banner, upc_no
+        order by week_index
+        rows between 13 preceding and current row
+      ),
+      2
+    ) as max_price_14w                                                -- 2 dp
+  from agg
+)
+select
+  retail_group,
+  banner,
+  upc_no,
+  product,
+  week_end_date,
+  week_index,
+  dollar_sales,
+  unit_sales,
+  avg_price,
+  max_price_14w,
+  round(
+    case
+      when max_price_14w is null or max_price_14w = 0 then null
+      else (max_price_14w - avg_price) / max_price_14w
+    end,
+    4
+  ) as pct_off,                                                       -- 4 dp
+  cast(
+    case
+      when max_price_14w is null or max_price_14w = 0 then 'Regular'
+      when avg_price <= max_price_14w * 0.95 then
+        case
+          when (max_price_14w - avg_price) / max_price_14w >= 0.20 then '20%+'
+          when (max_price_14w - avg_price) / max_price_14w >= 0.10 then '10-20%'
+          when (max_price_14w - avg_price) / max_price_14w >= 0.05 then '5-10%'
+          else 'Regular'
+        end
+      else 'Regular'
+    end as string
+  ) as pct_off_bucket,
+  cast(avg_price <= max_price_14w * 0.95 as bool) as is_promo_week
+from ref

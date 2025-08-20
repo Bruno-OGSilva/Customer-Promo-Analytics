@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: int_pfg_promo
+    description: >
+      Intermediate banner-level promo flags and % off for Pattison Food Group.
+      Aggregates POS to banner+UPC+week, computes weighted avg price,
+      compares to the 14-week rolling max, and buckets % off.
+
+    config:
+      tags: ['promo', 'pfg', 'intermediate']
+
+    columns:
+      - name: retail_group
+        description: "Retail group identifier (Pattison Food Group)."
+        tests:
+          - not_null
+
+      - name: banner
+        description: "Pattison Food Group banner name used for promo grouping."
+        tests:
+          - not_null
+
+      - name: upc_no
+        description: "UPC (string or numeric-as-string) for the item."
+        tests:
+          - not_null
+
+      - name: product
+        description: "Product description for the UPC."
+
+      - name: week_end_date
+        description: "Business week end date."
+        tests:
+          - not_null
+
+      - name: week_index
+        description: "Sequential business week index from the calendar table."
+        tests:
+          - not_null
+
+      - name: dollar_sales
+        description: "Sum of dollar sales for the banner+UPC+week (rounded to 2 dp)."
+        tests:
+          - not_null
+
+      - name: unit_sales
+        description: "Sum of unit sales for the banner+UPC+week."
+        tests:
+          - not_null
+
+      - name: avg_price
+        description: "Weighted average price = SUM($)/SUM(units) for the week (rounded to 2 dp)."
+
+      - name: max_price_14w
+        description: "Rolling 14-week max of avg_price within banner+UPC (rounded to 2 dp)."
+
+      - name: pct_off
+        description: "Percent off vs 14-week max. Rounded to 4 dp. Null if reference is zero or null."
+
+      - name: pct_off_bucket
+        description: "Promo depth bucket."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Regular','5-10%','10-20%','20%+']
+
+      - name: is_promo_week
+        description: "True if avg_price <= 95% of the 14-week max; else false."
