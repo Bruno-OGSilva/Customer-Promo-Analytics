@@ -6,9 +6,20 @@ models:
       Intermediate banner-level promo flags and % off for Metro.
       Aggregates POS to banner+UPC+week, computes weighted avg price,
       compares to the 14-week rolling max, and buckets % off.
-
     config:
       tags: ['promo', 'metro', 'intermediate']
+    meta:
+      owner: Bruno Silva
+      owner_slack: '@bruno'
+      purpose: 'Promo detection and depth by banner'
+      inputs: ['stg_metro_sales', 'int_metro_stores', 'calendar']
+      language: sql
+      notes: 'Rolling window ~14w; reprocess last ~16w in incremental runs'
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['retail_group','banner','upc_no','week_index']
 
     columns:
       - name: retail_group
@@ -33,6 +44,10 @@ models:
         description: "Business week end date."
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('calendar')
+                field: week_end_date
 
       - name: week_index
         description: "Sequential business week index from the calendar table."
@@ -43,20 +58,38 @@ models:
         description: "Sum of dollar sales for the banner+UPC+week (rounded to 2 dp)."
         tests:
           - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "dollar_sales >= 0"
 
       - name: unit_sales
         description: "Sum of unit sales for the banner+UPC+week."
         tests:
           - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "unit_sales >= 0"
 
       - name: avg_price
         description: "Weighted average price = SUM($)/SUM(units) for the week (rounded to 2 dp)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "avg_price is null or avg_price >= 0"
 
       - name: max_price_14w
         description: "Rolling 14-week max of avg_price within banner+UPC (rounded to 2 dp)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "max_price_14w is null or max_price_14w >= 0"
 
       - name: pct_off
         description: "Percent off vs 14-week max. Rounded to 4 dp. Null if reference is zero or null."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "pct_off is null or (pct_off >= 0 and pct_off <= 1)"
 
       - name: pct_off_bucket
         description: "Promo depth bucket."
