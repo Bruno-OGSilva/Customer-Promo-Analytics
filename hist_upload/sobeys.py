@@ -1,88 +1,90 @@
 import os
+import re
+
 import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
-import re
-from datetime import datetime
 
 
-def extract_date_from_header(file_path: str) -> str:
-    """Extracts the promo week ending date from the CSV file."""
-    with open(file_path, "r", encoding="utf-8") as file:
-        for line in file:
-            match = re.search(r"Time:Promo Week Ending (\d+)", line)
-            if match:
-                raw_date = match.group(1)
-                return datetime.strptime(raw_date, "%m%d%y").strftime("%Y-%m-%d")
-    raise ValueError(f"No promo week ending date found in {file_path}")
+# Detect "Time:Promo Week Ending 111324" inside the file
+TIME_RE = re.compile(r"Time:Promo Week Ending (\d{6})")
+
+
+def _parse_one_csv(file: str) -> pd.DataFrame:
+    """
+    Read a Sobeys CSV that contains multiple weekly blocks and return a tidy DataFrame
+    where each data row has the correct Time value. All numbers remain strings.
+    """
+    # Read as a raw grid; no header; keep everything as strings
+    raw = pd.read_csv(
+        file,
+        header=None,
+        sep=None,
+        engine="python",
+        dtype=str,
+        keep_default_na=False,
+        na_values=[],
+    )
+
+    # Find rows like "Time:Promo Week Ending 111324", convert to YYYY-MM-DD, and forward-fill
+    time_hits = raw[0].astype(str).str.extract(TIME_RE, expand=True)[0]
+
+    raw["Time"] = (
+        pd.to_datetime(time_hits, format="%m%d%y", errors="coerce")
+        .dt.strftime("%Y-%m-%d")
+        .ffill()
+    )
+
+    # Drop non-data lines
+    drop_prefix = (
+        raw[0].str.startswith("Product & Geography Sales Metrics")
+        | raw[0].str.startswith("Sobeys Brand")
+        | raw[0].str.startswith("Sobeys Sales Organizations")
+        | raw[0].str.startswith("Vendor")
+        | raw[0].str.startswith("Time:Promo Week Ending")
+    )
+
+    # Keep only the actual table rows (under the "Geography ... Unit ..." header)
+    mask = (
+        (raw[0] != "Geography")  # not the table header row
+        & raw[0].ne("")
+        & raw[1].ne("")
+        & raw[2].ne("")  # has first 3 columns
+        & ~drop_prefix.fillna(False)
+    )
+
+    df = raw.loc[mask, [0, 1, 2, 3, 4, "Time"]].copy()
+    df.columns = [
+        "Geography",
+        "Product",
+        "UPC No",
+        "Dollar Sales All Sales",
+        "Unit Sales All Sales",
+        "Time",
+    ]
+
+    # Enrichments kept from your original code
+    df["store_id"] = df["Geography"].str.extract(r"Store (\d+)", expand=False)
+    df["unique_id"] = "sobeys|" + df["UPC No"] + "|" + df["store_id"] + "|" + df["Time"]
+    df["timestamp"] = pd.to_datetime("now")
+    df["retail_group"] = "Sobeys"
+
+    # Extra safety: remove any stray header text that might slip in
+    df = df[df["Geography"] != "Geography"]
+    df = df[df["Geography"] != "Unit Sales All Sales"]
+
+    return df
 
 
 def load_csv_files(directory: str) -> pd.DataFrame:
-    """Loads all CSV files from a directory, extracts relevant data, and concatenates into a DataFrame."""
+    """Loads all CSV files from a directory and concatenates them."""
     all_files = [
         os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".csv")
     ]
-
     if not all_files:
         raise ValueError("No CSV files found in the specified directory.")
-
-    df_list = []
-
-    for file in all_files:
-        promo_date = extract_date_from_header(file)
-        df = pd.read_csv(
-            file,
-            skiprows=lambda x: x < 6,
-            names=[
-                "Geography",
-                "Product",
-                "UPC No",
-                "Dollar Sales All Sales",
-                "Unit Sales All Sales",
-            ],
-            dtype={
-                "UPC No": str,
-                "Dollar Sales All Sales": str,
-                "Unit Sales All Sales": str,
-            },
-            encoding="utf-8",
-            low_memory=False,
-        )
-        df.dropna(
-            subset=["Geography", "Product", "UPC No"], inplace=True
-        )  # Remove empty rows
-        df["Dollar Sales All Sales"] = (
-            df["Dollar Sales All Sales"].astype(str).fillna("")
-        )  # Ensure all values are strings
-        df["Unit Sales All Sales"] = (
-            df["Unit Sales All Sales"].astype(str).fillna("")
-        )  # Ensure all values are strings
-        df["Time"] = promo_date
-
-        # Extract store_id from Geography
-        df["store_id"] = df["Geography"].str.extract(r"Store (\d+)", expand=False)
-
-        # Create unique_id by concatenating sobeys, UPC No, store_id, and Time with | separator
-        df["unique_id"] = (
-            "sobeys|" + df["UPC No"] + "|" + df["store_id"] + "|" + df["Time"]
-        )
-
-        # Add current timestamp to timestamp column
-        df["timestamp"] = pd.to_datetime("now")
-
-        # Add the retail group
-        df["retail_group"] = "Sobeys"
-
-        # Remove any repeated headers appearing within the data
-        df = df[df["Geography"] != "Geography"]
-
-        # Remove any repeated headers appearing within the data
-        df = df[df["Geography"] != "Unit Sales All Sales"]
-
-        df_list.append(df)
-
-    unified_df = pd.concat(df_list, ignore_index=True)
-    return unified_df
+    frames = [_parse_one_csv(f) for f in all_files]
+    return pd.concat(frames, ignore_index=True)
 
 
 def create_table_if_not_exists(client, dataset_id: str, table_id: str):
@@ -104,7 +106,7 @@ def create_table_if_not_exists(client, dataset_id: str, table_id: str):
     ]
 
     try:
-        client.get_table(table_ref)  # Check if the table exists
+        client.get_table(table_ref)
         print(f"Table {table_id} already exists.")
     except Exception:
         table = bigquery.Table(table_ref, schema=schema)
@@ -125,9 +127,7 @@ def upload_to_bigquery(
     )
     client = bigquery.Client(credentials=credentials, project=project_id)
 
-    create_table_if_not_exists(
-        client, dataset_id, table_id
-    )  # Ensure table exists before uploading
+    create_table_if_not_exists(client, dataset_id, table_id)
 
     table_ref = f"{project_id}.{dataset_id}.{table_id}"
     job_config = bigquery.LoadJobConfig(
@@ -135,7 +135,7 @@ def upload_to_bigquery(
     )
 
     job = client.load_table_from_dataframe(df, table_ref, job_config=job_config)
-    job.result()  # Wait for the job to complete
+    job.result()
 
     print(f"Successfully uploaded {len(df)} records to {table_ref}")
 

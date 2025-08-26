@@ -17,7 +17,6 @@ with sales as (
   from {{ ref('stg_lcl_sales') }} a
   {% if is_incremental() %}
     where a.week_end_date >= (
-      -- reprocess the last ~16 weeks from source (no {{ this }} to avoid parser issues)
       select date_sub(max(week_end_date), interval 16 week)
       from {{ ref('stg_lcl_sales') }}
     )
@@ -33,8 +32,9 @@ stores as (
 cal as (
   select
     c.week_end_date,
-    c.week_index
+    any_value(c.week_index) as week_index
   from {{ ref('calendar') }} c
+  group by c.week_end_date
 ),
 agg as (
   select

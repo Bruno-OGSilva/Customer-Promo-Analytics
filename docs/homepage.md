@@ -1,3 +1,4 @@
+{% docs __overview__ %}
 # DBT Project Overview: Customer Retail Analytics
 
 This documentation provides an overview of the key models and transformations in the Customer Retail Analytics project. The project is organized into multiple layers, each serving a specific purpose in the data transformation pipeline. This overview page outlines the raw, staging, intermediate, promo-intermediate, and mart layers, along with a brief description of each model.
@@ -89,3 +90,5 @@ This documentation provides an overview of the key models and transformations in
 Each model, from raw ingestion to final marts, incrementally transforms and enriches the data. This ensures downstream reporting is built on clean, consistent, and business-aligned datasets.
 
 For detailed documentation on each model, please refer to the generated `.md` files.
+
+{% enddocs %}

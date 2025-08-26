@@ -1,87 +1,93 @@
 import os
+import re
+
 import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
-import re
-from datetime import datetime
 
 
-def extract_date_from_header(file_path: str) -> str:
-    """Extracts the promo week ending date from the CSV file."""
-    with open(file_path, "r", encoding="utf-8") as file:
-        for line in file:
-            match = re.search(r"Time:Week Ending (\d{2}-\d{2}-\d{2})", line)
-            if match:
-                raw_date = match.group(1)
-                return datetime.strptime(raw_date, "%m-%d-%y").strftime("%Y-%m-%d")
-    raise ValueError(f"No promo week ending date found in {file_path}")
+# Detect "Time:Week Ending mm-dd-yy" inside the file
+TIME_RE = re.compile(r"Time:Week Ending (\d{2}-\d{2}-\d{2})")
+
+
+def _parse_one_csv(file: str) -> pd.DataFrame:
+    """
+    Read a CCL CSV that contains multiple weekly blocks and return a tidy DataFrame
+    where each data row has the correct Time value. All numbers remain strings.
+    """
+    # Read as a raw grid; no header; keep everything as strings
+    raw = pd.read_csv(
+        file,
+        header=None,
+        sep=None,
+        engine="python",  # allows automatic delimiter detection
+        dtype=str,
+        keep_default_na=False,
+        na_values=[],
+    )
+
+    # Find rows like "Time:Week Ending 11-06-24", convert to YYYY-MM-DD, and forward-fill
+    time_hits = raw[0].astype(str).str.extract(TIME_RE, expand=True)[0]
+    raw["Time"] = (
+        pd.to_datetime(time_hits, format="%m-%d-%y", errors="coerce")
+        .dt.strftime("%Y-%m-%d")
+        .ffill()
+    )
+
+    # Drop non-data/label rows (keep this light and safe)
+    drop_prefix = (
+        raw[0].str.startswith("Product & Geography Sales Metrics")
+        | raw[0].str.startswith("Brand")
+        | raw[0].str.startswith("Sales Organizations")
+        | raw[0].str.startswith("Vendor")
+        | raw[0].str.startswith("Time:Week Ending")
+    )
+
+    # Keep only the actual table rows (under the "Geography ... Unit ..." header)
+    mask = (
+        (raw[0] != "Geography")  # not the table header row
+        & raw[0].ne("")
+        & raw[1].ne("")
+        & raw[2].ne("")  # has first 3 columns
+        & ~drop_prefix.fillna(False)
+    )
+
+    df = raw.loc[mask, [0, 1, 2, 3, 4, "Time"]].copy()
+    df.columns = [
+        "Geography",
+        "Product",
+        "UPC ID",
+        "Dollar Sales",
+        "Unit Sales",
+        "Time",
+    ]
+
+    # Keep numbers as strings (no casting)
+    # Build unique_id exactly like your original
+    df["unique_id"] = "ccl|" + df["UPC ID"] + "|" + df["Geography"] + "|" + df["Time"]
+
+    # Add metadata
+    df["timestamp"] = pd.to_datetime("now")
+    df["retail_group"] = "Calgary Coop"
+
+    # Extra safety: remove any stray header text that might slip in
+    df = df[df["Geography"] != "Geography"]
+
+    # Drop rows where both Dollar Sales and Unit Sales are "0" (as in your original)
+    df = df[~((df["Dollar Sales"] == "0") & (df["Unit Sales"] == "0"))]
+
+    return df
 
 
 def load_csv_files(directory: str) -> pd.DataFrame:
-    """Loads all CSV files from a directory, extracts relevant data, and concatenates into a DataFrame."""
+    """Loads all CSV files from a directory and concatenates them."""
     all_files = [
         os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".csv")
     ]
-
     if not all_files:
         raise ValueError("No CSV files found in the specified directory.")
-
-    df_list = []
-
-    for file in all_files:
-        promo_date = extract_date_from_header(file)
-        df = pd.read_csv(
-            file,
-            skiprows=lambda x: x < 5,
-            names=[
-                "Geography",
-                "Product",
-                "UPC ID",
-                "Dollar Sales",
-                "Unit Sales",
-            ],
-            dtype={
-                "Geography": str,
-                "Product": str,
-                "UPC ID": str,
-                "Dollar Sales": str,
-                "Unit Sales": str,
-            },
-            encoding="utf-8",
-            low_memory=False,
-        )
-        df.dropna(
-            subset=["Geography", "Product", "UPC ID"], inplace=True
-        )  # Remove empty rows
-        df["Dollar Sales"] = (
-            df["Dollar Sales"].astype(str).fillna("")
-        )  # Ensure all values are strings
-        df["Unit Sales"] = (
-            df["Unit Sales"].astype(str).fillna("")
-        )  # Ensure all values are strings
-        df["Time"] = promo_date
-
-        # Create unique_id by concatenating sobeys, UPC No, store_id, and Time with | separator
-        df["unique_id"] = (
-            "ccl|" + df["UPC ID"] + "|" + df["Geography"] + "|" + df["Time"]
-        )
-
-        # Add current timestamp to timestamp column
-        df["timestamp"] = pd.to_datetime("now")
-
-        # Add the retail group
-        df["retail_group"] = "Calgary Coop"
-
-        # Remove any repeated headers appearing within the data
-        df = df[df["Geography"] != "Geography"]
-
-        # Drop rows where both Dollar Sales and Unit Sales are "0"
-        df = df[~((df["Dollar Sales"] == "0") & (df["Unit Sales"] == "0"))]
-
-        df_list.append(df)
-
-    unified_df = pd.concat(df_list, ignore_index=True)
-    return unified_df
+    frames = [_parse_one_csv(f) for f in all_files]
+    return pd.concat(frames, ignore_index=True)
 
 
 def create_table_if_not_exists(client, dataset_id: str, table_id: str):
@@ -123,9 +129,7 @@ def upload_to_bigquery(
     )
     client = bigquery.Client(credentials=credentials, project=project_id)
 
-    create_table_if_not_exists(
-        client, dataset_id, table_id
-    )  # Ensure table exists before uploading
+    create_table_if_not_exists(client, dataset_id, table_id)  # Ensure table exists
 
     table_ref = f"{project_id}.{dataset_id}.{table_id}"
     job_config = bigquery.LoadJobConfig(
