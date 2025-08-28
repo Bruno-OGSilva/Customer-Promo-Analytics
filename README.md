@@ -8,8 +8,10 @@ Promotions are one of the most important levers in retail, but retailer POS data
 - Building a unified **Promo Mart table** for cross-retailer analysis.
 - Visualizing results in a **Power BI dashboard**.
 
-📖 Full Article: [Building a Promotional Analytics Pipeline with dbt](assets/article.pdf)
+📖 Full Article: [Building a Promotional Analytics Pipeline with dbt](https://www.linkedin.com/pulse/building-promotional-analytics-pipeline-dbt-bigquery-bruno-ot%25C3%25A1vio-d4jhc)
+
 📊 Interactive Power BI Report: [Power BI Dashboard](https://app.powerbi.com/view?r=eyJrIjoiYmY3NDI1NjMtMmUwMi00ODJmLWJkZWEtMjgxN2NkNTUxZDdlIiwidCI6ImI3M2I4M2U2LWE0N2ItNGExYS1hNGIyLWY3Mjk5MGNlNjM0OSJ9)
+
 📚 dbt Docs: [GitHub Pages Site](https://bruno-ogsilva.github.io/dbtdcocs-promo-analytics/#!/overview)
 
 ---
