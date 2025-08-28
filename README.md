@@ -27,7 +27,7 @@ The project follows a layered **dbt architecture**:
 - **Mart Layer**: Unified sales, stores, product, and promo tables.
 - **Calendar**: Custom business weeks with indices for rolling logic.
 
-![Promo Flow Diagram](assets/Customer Promo Analytics architecture.png)
+![Promo Flow Diagram](assets/Customer_Promo_analytics_architecture.png)
 
 ---
 
