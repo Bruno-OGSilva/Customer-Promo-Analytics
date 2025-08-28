@@ -50,7 +50,7 @@ The Power BI dashboard brings promo analytics to life:
 4. **Price Comparison** – regular vs promo price using dbt’s rolling max logic.
 5. **Metrics Glossary** – transparent definitions of all measures.
 
-![Dashboard Screenshot](assets/Promo Overview.png)
+![Dashboard Screenshot](assets/Promo_Overview.png)
 
 > Layout inspired by the excellent **[Nudge BI templates](https://nudgebi.com/)** – I did my best to get close to the awesome templates they provide.
 
